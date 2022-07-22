@@ -43,7 +43,7 @@ class InfomationWithCirleEdgeView: UIView {
         drawProgressRing(shapeLayer: backgroundShape, completePercentage: 1, strokeColor: UIColor.systemFill.cgColor)
         drawProgressRing(shapeLayer: progressShape, completePercentage: self.completePercentage, strokeColor: UIColor.cyan.cgColor)
         var duration = duration
-        if completePercentage > self.completePercentage {
+        if completePercentage > self.completePercentage, self.completePercentage != 0 {
            duration = 0
         }
         self.completePercentage = completePercentage

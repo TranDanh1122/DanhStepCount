@@ -128,7 +128,6 @@ extension OneWeekStepDetailCell: UICollectionViewDelegate, UICollectionViewDataS
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         if layout.currentPage != oldPage {
             var currentPage =  6 - layout.currentPage
-            print("current page \(currentPage) \(layout.currentPage) \(collectionViewDataSource?.count)")
             if currentPage > 6 {
                 currentPage = 6
             }
