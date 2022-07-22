@@ -9,35 +9,25 @@ import UIKit
 import CoreMotion
 class MainTableViewController: UIViewController {
     @IBOutlet private weak var tableView: UITableView!
-//    private var viewModel: MainTableViewModel = MainTableViewModel()
-//    private var dataSource: [PedometerDetail]? {
-//        didSet {
-//            guard let dataSource = dataSource else { return }
-//            NotificationCenter.default.post(name: Notification.Name.init(rawValue: "reloadTableCellDataWhenShake"), object: nil, userInfo: ["dataSource": dataSource])
-////            DispatchQueue.main.async { [unowned self] in
-////                tableView.reloadRows(at: [IndexPath(row: 0, section: 1)], with: .automatic)
-////            }
-//        }
-//    }
+    private var viewModel: MainTableViewModel = MainTableViewModel()
+    private var dataSource: [PedometerDetail]? {
+        didSet {
+            guard let dataSource = dataSource else { return }
+            NotificationCenter.default.post(name: Notification.Name.init(rawValue: "reloadTableCellDataWhenShake"), object: nil, userInfo: ["dataSource": dataSource])
+//            DispatchQueue.main.async { [unowned self] in
+//                tableView.reloadRows(at: [IndexPath(row: 0, section: 1)], with: .automatic)
+//            }
+        }
+    }
     deinit {
-//        viewModel.notificationCenter.removeObserver(self, name: viewModel.notificationName, object: nil)
+        viewModel.notificationCenter.removeObserver(self, name: viewModel.notificationName, object: nil)
     }
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
         setUpTableView()
         setupSubcribeObserveble()
-        
-        // model.setup()
-        viewModel.setup()
-        viewModel.updateBlock = { data in
-            // update view
-            // cell.reload()
-
-        }
     }
-
     
     // MARK: config view
     private func setUpTableView() {
@@ -52,18 +42,18 @@ class MainTableViewController: UIViewController {
     }
     
     // MARK: subcribe data from view model
-//    private func setupSubcribeObserveble() {
-////        dataSource = viewModel.stepDataSource
-//        NotificationCenter.default.addObserver(self, selector: #selector(observebleOnNextHanle(_:)), name: viewModel.notificationName, object: nil)
-//    }
-//
-//    @objc func observebleOnNextHanle(_ noti: Notification) {
-//        if let data = noti.userInfo?[viewModel.notificationDataKey] as? [PedometerDetail] {
-//            dataSource = data
-//        } else {
-//            print("cant get data from userInfo, it's nil")
-//        }
-//    }
+    private func setupSubcribeObserveble() {
+        dataSource = viewModel.stepDataSource
+        NotificationCenter.default.addObserver(self, selector: #selector(observebleOnNextHanle(_:)), name: viewModel.notificationName, object: nil)
+    }
+    
+    @objc func observebleOnNextHanle(_ noti: Notification) {
+        if let data = noti.userInfo?[viewModel.notificationDataKey] as? [PedometerDetail] {
+            dataSource = data
+        } else {
+            print("cant get data from userInfo, it's nil")
+        }
+    }
     
 }
 extension MainTableViewController: UITableViewDelegate, UITableViewDataSource {
