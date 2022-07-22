@@ -42,6 +42,10 @@ class InfomationWithCirleEdgeView: UIView {
         progressShape.removeAllAnimations()
         drawProgressRing(shapeLayer: backgroundShape, completePercentage: 1, strokeColor: UIColor.systemFill.cgColor)
         drawProgressRing(shapeLayer: progressShape, completePercentage: self.completePercentage, strokeColor: UIColor.cyan.cgColor)
+        var duration = duration
+        if completePercentage > self.completePercentage {
+           duration = 0
+        }
         self.completePercentage = completePercentage
         let drawingAnimation = drawingAnimation(shapeLayer: progressShape, inTime: duration, with: completePercentage)
         addAnimationToShape(shapeLayer: progressShape, value: completePercentage, animation: drawingAnimation)
