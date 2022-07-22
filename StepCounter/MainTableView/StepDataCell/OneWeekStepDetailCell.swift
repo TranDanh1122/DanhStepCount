@@ -11,15 +11,30 @@ class CollectionViewCustomLayout: UICollectionViewFlowLayout {
     static var shared: CollectionViewCustomLayout = CollectionViewCustomLayout()
     var currentPage: Int = 0
     var oldOffset: CGFloat = 0.0
-    
     override func targetContentOffset(forProposedContentOffset proposedContentOffset: CGPoint, withScrollingVelocity velocity: CGPoint) -> CGPoint {
         guard let collection = collectionView else { return super.targetContentOffset(forProposedContentOffset: proposedContentOffset, withScrollingVelocity: velocity)
         }
         let numberOfItemInSection = collection.numberOfItems(inSection: 0)
-        //lướt qua phải
+        //[ -> dùng cho lần đầu tiên scroll sau khi chuyển ngày bằng segment -> không hiểu lắm
+        if collection.contentOffset.x > oldOffset, velocity.x < 0.0 {
+            currentPage = max(currentPage - 1, 0)
+        } else if collection.contentOffset.x < oldOffset, velocity.x > 0.0 {
+            currentPage = min(currentPage + 1, numberOfItemInSection-1)
+        }
+        //]
+        //lướt qua trái
         if collection.contentOffset.x > oldOffset, velocity.x > 0.0 {
             currentPage = min(currentPage + 1, numberOfItemInSection-1)
-        } else if collection.contentOffset.x < oldOffset, velocity.x < 0.0 { //lướt qua trái
+        } else if collection.contentOffset.x < oldOffset, velocity.x < 0.0 { //lướt qua phải
+            /*                contentoffset
+                  oldoffset ---------------
+             ---------------|-------------|---------
+             |              |             |
+             |              |             |
+             ---------------|-------------|---------
+                                --- scroll velocty
+                            ---------------
+             */
             currentPage = max(currentPage - 1, 0)
         }
         // chiều rôngj của collection
@@ -46,6 +61,7 @@ class OneWeekStepDetailCell: UITableViewCell {
     private var notificationName = Notification.Name.init(rawValue: "reloadTableCellDataWhenShake")
     let layout = CollectionViewCustomLayout.shared
     weak var delegate: OneWeekStepDetailCellDelegate?
+    private var oldPage: Int = 0
     //deinit
     deinit {
         NotificationCenter.default.removeObserver(self, name: notificationName, object: nil)
@@ -61,7 +77,6 @@ class OneWeekStepDetailCell: UITableViewCell {
         collectionViewDataSource = data
         collectionView.reloadData()
     }
-    
     // MARK: COLLECTIONVIEW SETUP
     private func setupSubview() {
         collectionView.dataSource = self
@@ -78,7 +93,6 @@ class OneWeekStepDetailCell: UITableViewCell {
         collectionView.transform = CGAffineTransform(scaleX: -1, y: 1)
         register(cellName: "OneDateStepDetailCell")
     }
-    
     private func register(cellName: String) {
         collectionView.register(UINib(nibName: cellName, bundle: nil), forCellWithReuseIdentifier: cellName)
     }
@@ -86,7 +100,6 @@ class OneWeekStepDetailCell: UITableViewCell {
     private func observableUpdateDataEvent() {
         NotificationCenter.default.addObserver(self, selector: #selector(reloadDataWhenDataSourceUpdate(_:)), name: notificationName, object: nil)
     }
-    
     @objc func reloadDataWhenDataSourceUpdate(_ noti: Notification) {
         if let data = noti.userInfo?["dataSource"] as? [PedometerDetail] {
             DispatchQueue.main.async {
@@ -97,23 +110,30 @@ class OneWeekStepDetailCell: UITableViewCell {
             print("data error")
         }
     }
+    
 }
 extension OneWeekStepDetailCell: UICollectionViewDelegate, UICollectionViewDataSource {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return collectionViewDataSource?.count ?? 0
     }
-    
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "OneDateStepDetailCell", for: indexPath) as? OneDateStepDetailCell
         guard let cell = cell else { return OneDateStepDetailCell() }
         let cellData = collectionViewDataSource?[indexPath.row]
         let lastIndex = (collectionViewDataSource?.count ?? 0) - 1
         cell.transform = CGAffineTransform(scaleX: -1, y: 1)
-        cell.reuseCellWith(data: cellData, indexNeedReload: indexPath , lastIndex: lastIndex)
+        cell.reuseCellWith(data: cellData, indexNeedReload: indexPath, lastIndex: lastIndex)
         return cell
     }
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        let currentPage = (collectionViewDataSource?.count ?? 0) - 1 - layout.currentPage
-        delegate?.collectionViewDidScrollIn(self, currentPage: currentPage)
+        if layout.currentPage != oldPage {
+            var currentPage =  6 - layout.currentPage
+            print("current page \(currentPage) \(layout.currentPage) \(collectionViewDataSource?.count)")
+            if currentPage > 6 {
+                currentPage = 6
+            }
+            delegate?.collectionViewDidScrollIn(self, currentPage: currentPage)
+            oldPage = layout.currentPage
+        }
     }
 }

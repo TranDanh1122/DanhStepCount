@@ -14,6 +14,9 @@ class MainTableViewController: UIViewController {
         didSet {
             guard let dataSource = dataSource else { return }
             NotificationCenter.default.post(name: Notification.Name.init(rawValue: "reloadTableCellDataWhenShake"), object: nil, userInfo: ["dataSource": dataSource])
+//            DispatchQueue.main.async { [unowned self] in
+//                tableView.reloadRows(at: [IndexPath(row: 0, section: 1)], with: .automatic)
+//            }
         }
     }
     deinit {
@@ -44,7 +47,7 @@ class MainTableViewController: UIViewController {
         NotificationCenter.default.addObserver(self, selector: #selector(observebleOnNextHanle(_:)), name: viewModel.notificationName, object: nil)
     }
     
-    @objc func observebleOnNextHanle(_ noti: Notification) {        
+    @objc func observebleOnNextHanle(_ noti: Notification) {
         if let data = noti.userInfo?[viewModel.notificationDataKey] as? [PedometerDetail] {
             dataSource = data
         } else {
@@ -90,16 +93,19 @@ extension MainTableViewController: UITableViewDelegate, UITableViewDataSource {
 }
 extension MainTableViewController: ChartStepDataDelegate {
     func changeSegmentValueIn(_ chartStepDataCell: ChartStepDataCell, segmentValue: Int) {
+        // get cell need update
         let stepDataCell = tableView.cellForRow(at: IndexPath(row: 0, section: 0)) as? OneWeekStepDetailCell
         guard let stepDataCell = stepDataCell else { return }
-        stepDataCell.layout.currentPage = (dataSource?.count ?? 0) - 1 - segmentValue
-        stepDataCell.collectionView.scrollToItem(at: IndexPath(row: segmentValue, section: 0), at: .centeredHorizontally, animated: false)
+        stepDataCell.layout.currentPage = 6 - segmentValue
+        // scroll collection to item have index = segment value
+        stepDataCell.collectionView.scrollToItem(at: IndexPath(row: segmentValue, section: 0), at: .centeredHorizontally, animated: true)
     }
 }
 extension MainTableViewController: OneWeekStepDetailCellDelegate {
     func collectionViewDidScrollIn(_ oneWeekStepDetailCell: OneWeekStepDetailCell, currentPage: Int) {
         let chartStepDataCell = tableView.cellForRow(at: IndexPath(row: 0, section: 1)) as? ChartStepDataCell
-        guard let chartStepDataCell = chartStepDataCell else { return }
-        chartStepDataCell.daySegment.selectedSegmentIndex = currentPage
+        guard let chartStepDataCell = chartStepDataCell, let daySegment =  chartStepDataCell.daySegment else { return }
+        daySegment.selectedSegmentIndex = currentPage
+        chartStepDataCell.highlightChartPointAt(day: currentPage)
     }
 }

@@ -71,15 +71,18 @@ extension CMPedometerData {
         return "\(mile) km"
     }
     var time: String {
-        if let pace = self.averageActivePace, pace.doubleValue != 0 {
-            let time = (distanceUnW.doubleValue * pace.doubleValue / 60).toString()
+        if let avgPace = self.averageActivePace, avgPace.doubleValue != 0 {
+            var time: String = ""
+            time = (distanceUnW.doubleValue * avgPace.doubleValue / 60).toString()
+            print((distanceUnW.doubleValue * avgPace.doubleValue / 60))
             return ("\(time) m")
         } else {
             return "0 m"
         }
     }
     var calories: String {
-        return ("\((distanceUnW.doubleValue * 70.0 / 1000 * 0.95 ).toString()) cal")
+        let calories = distanceUnW.doubleValue * 70.0 / 1000 * 0.95 
+        return ("\(calories.toString()) cal")
     }
     var stokeEnd: Double {
         return self.numberOfSteps.doubleValue / 10000
@@ -94,7 +97,7 @@ extension NSNumber {
         let numberNeedFormat = self
         let numberFormatted = NumberFormatter()
         numberFormatted.numberStyle = style
-        let result = numberFormatted.string(for: numberNeedFormat)
+        var result = numberFormatted.string(for: numberNeedFormat)
         guard let result = result else { return "0" }
         return result
     }

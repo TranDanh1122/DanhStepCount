@@ -7,17 +7,19 @@
 
 import UIKit
 import Charts
-class CustomChartView: UIView {
+protocol CustomChartViewDelegate: AnyObject {
+    func selectedPointInChartView(_ chartView: CustomChartView, with day: Double )
+}
+class CustomChartView: UIView, ChartViewDelegate {
     var contentChartView: LineChartView = {
         let view = LineChartView()
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
     }()
+    weak var delegate: CustomChartViewDelegate?
     func configuraChartViewWith(data: [PedometerDetail]) {
         layoutContentChartView()
-        setupChartData(data: data)
-        let data = initChartData(data)
-        contentChartView.data = data
+        setupChart(data: data)
     }
     private func layoutContentChartView() {
         self.addSubview(contentChartView)
@@ -27,7 +29,7 @@ class CustomChartView: UIView {
         let trainContraint = self.contentChartView.trailingAnchor.constraint(equalTo: self.trailingAnchor)
         NSLayoutConstraint.activate([topContraint, bottomContraint, leadContraint, trainContraint])
     }
-    private func initChartData(_ stepsData: [PedometerDetail]) -> LineChartData {
+    private func initChartData(with stepsData: [PedometerDetail]) -> LineChartData {
         let steps = stepsData.map { $0.steps?.currencyConvertToNumber() ?? 0 }
         var dataEntry = [ChartDataEntry]()
         for day in 0...steps.count - 1 {
@@ -44,7 +46,7 @@ class CustomChartView: UIView {
             dataSet.drawFilledEnabled = true
         }
         dataSet.circleColors = [UIColor.label]
-        dataSet.circleHoleColor = UIColor.label
+        dataSet.circleHoleColor = UIColor.white
         dataSet.lineWidth = 5
         dataSet.circleRadius = 5
         dataSet.drawHorizontalHighlightIndicatorEnabled = false
@@ -53,19 +55,57 @@ class CustomChartView: UIView {
         let lineChartData = LineChartData(dataSet: dataSet)
         return lineChartData
     }
-    private func setupChartData(data: [PedometerDetail]) {
+    private func setupChart(data: [PedometerDetail]) {
+        let chartData = initChartData(with: data)
+        contentChartView.data = chartData
         contentChartView.rightAxis.enabled = false
         contentChartView.leftAxis.enabled = false
         contentChartView.setExtraOffsets(left: 0, top: 0, right: 0, bottom: 0)
+        contentChartView.setScaleEnabled(false)
         contentChartView.leftAxis.axisMaximum = 10000
         contentChartView.legend.enabled = false
+        contentChartView.delegate = self
         let xAxis = contentChartView.xAxis
-        xAxis.drawLabelsEnabled = true
-        xAxis.drawGridLinesEnabled = true
+        xAxis.drawLabelsEnabled = false
+        xAxis.drawGridLinesEnabled = false
         xAxis.drawAxisLineEnabled = false
         xAxis.yOffset = -10
         //        let xAxisLabel = data.map { Date(timeIntervalSince1970: $0.startDay ?? 0).getOnlyDate() }
         //        xAxis.valueFormatter = IndexAxisValueFormatter(values: xAxisLabel)
+    }
+    func chartValueSelected(_ chartView: ChartViewBase, entry: ChartDataEntry, highlight: Highlight) {
+       
+        contentChartView.layer.sublayers = nil
+        var realPosition = CGPoint(x: highlight.xPx, y: highlight.yPx)
+        // Hack to get the real position of the highlight programaticaly
+        // [ -> chưa hiểu lắm, cần làm rõ
+        if realPosition.x.isNaN || realPosition.y.isNaN {
+            let transformer = contentChartView.getTransformer(forAxis: contentChartView.leftAxis.axisDependency)
+            let pixelValueOfEntry = transformer.pixelForValues(x: entry.x, y: entry.y)
+            realPosition.x = pixelValueOfEntry.x
+            realPosition.y = pixelValueOfEntry.y
+        }
+        //]
+        let ringShape = drawRingAt(positionX: realPosition.x, positionY: realPosition.y)
+        contentChartView.layer.addSublayer(ringShape)
+        delegate?.selectedPointInChartView(self, with: entry.x)
+    }
+    private func drawRingAt(positionX: Double, positionY: Double) -> CAShapeLayer {
+        let ringShape = CAShapeLayer()
+        let circlePath = UIBezierPath(arcCenter: CGPoint(x: positionX, y: positionY),
+                                      radius: 8,
+                                      startAngle: CGFloat(-0.5 * .pi),
+                                      endAngle: CGFloat(1.5 * .pi),
+                                      clockwise: true)
+        // circle shape
+        ringShape.path = circlePath.cgPath
+        ringShape.strokeColor = UIColor.systemGreen.cgColor
+        ringShape.fillColor = UIColor.clear.cgColor
+        ringShape.lineWidth = 4
+        // set start and end values
+        ringShape.strokeStart = 0.0
+        ringShape.strokeEnd = 1.0
+        return ringShape
     }
 }
 class CustomSegmentView: UISegmentedControl {
@@ -76,24 +116,43 @@ class CustomSegmentView: UISegmentedControl {
             let day = Date(timeIntervalSince1970: datas[index].startDay ?? 0).getOnlyDate()
             self.insertSegment(withTitle: day, at: index, animated: true)
         }
+        self.selectedSegmentTintColor = UIColor.systemGreen
         self.selectedSegmentIndex = numberOfData
     }
 }
 protocol ChartStepDataDelegate: AnyObject {
     func changeSegmentValueIn(_ chartStepDataCell: ChartStepDataCell, segmentValue: Int)
 }
-class ChartStepDataCell: UITableViewCell {
+class ChartStepDataCell: UITableViewCell, CustomChartViewDelegate {
     @IBOutlet private var chartView: CustomChartView!
     @IBOutlet var daySegment: CustomSegmentView!
     weak var delegate: ChartStepDataDelegate?
+    private var dataChart = [PedometerDetail]()
     override func awakeFromNib() {
         super.awakeFromNib()
+        chartView.delegate = self
     }
     func reloadDataForReuseWith(data: [PedometerDetail]) {
         chartView.configuraChartViewWith(data: data)
+        dataChart = data
         daySegment.setupSegment(with: data)
     }
     @IBAction func changeValueSegment(_ sender: UISegmentedControl) {
         delegate?.changeSegmentValueIn(self, segmentValue: sender.selectedSegmentIndex)
+        print("change segment value")
+        let segmentValue = sender.selectedSegmentIndex
+        highlightChartPointAt(day: segmentValue)
+    }
+    func highlightChartPointAt(day segmentValue: Int) {
+        if !dataChart.isEmpty, dataChart.count - 1 >= segmentValue {
+            guard let steps = dataChart[segmentValue].steps?.currencyConvertToNumber() else { return }
+            let stepAtThisPoint = NSDecimalNumber(decimal: steps).doubleValue
+            self.chartView.contentChartView.highlightValue(Highlight(x: Double(segmentValue), y: stepAtThisPoint, dataSetIndex: 0), callDelegate: true)
+        }
+    }
+    // conform CustomChartViewDelegate delegate
+    func selectedPointInChartView(_ chartView: CustomChartView, with day: Double) {
+        delegate?.changeSegmentValueIn(self, segmentValue: Int(day))
+        daySegment.selectedSegmentIndex = Int(day)
     }
 }

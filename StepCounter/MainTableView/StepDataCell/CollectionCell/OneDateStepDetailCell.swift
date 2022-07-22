@@ -8,42 +8,45 @@
 import UIKit
 import CoreMotion
 class SumStepCustomLabel: UILabel {
-    let displayLinks = CADisplayLink()
+    var displayLinks = CADisplayLink()
     var counterStep = 0.0
     var limit: Double = 0.0
+    var indexNeedReload: IndexPath = IndexPath()
     func displayLinkSetupWith(counterStep: Double, maxStep: Double) {
         self.limit = maxStep
-        let displayLink = CADisplayLink(target: self, selector: #selector(displayLinkHandleUpdate))
-        displayLink.add(to: .current, forMode: .common)
+         displayLinks = CADisplayLink(target: self, selector: #selector(displayLinkHandleUpdate))
+        displayLinks.add(to: .current, forMode: .common)
     }
-    
     @objc func displayLinkHandleUpdate(displayLink: CADisplayLink) {
-        counterStep += Double((limit / 120))
-        if counterStep >= limit {
-            displayLink.invalidate()
-            updateLabelWith(number: limit)
-        } else {
-            updateLabelWith(number: counterStep)
+        if indexNeedReload == IndexPath(row: 6, section: 0) {
+            counterStep += Double((limit / 120))
+            if counterStep >= limit {
+                displayLinks.invalidate()
+                updateLabelWith(number: limit)
+            } else {
+                updateLabelWith(number: counterStep)
+            }
         }
     }
-    
     private func updateLabelWith(number: Double) {
         let sumStep = NSNumber(value: number).numberFormatToDecimal(with: .decimal)
         let sumStepArr = sumStep.components(separatedBy: ".")
         self.text = sumStepArr[0]
     }
-    
 }
 class InfomationWithCirleEdgeView: UIView {
-    var circleShape: CAShapeLayer = CAShapeLayer()
+    var progressShape: CAShapeLayer = CAShapeLayer()
+    var backgroundShape: CAShapeLayer = CAShapeLayer()
     var completePercentage: Double = 0
     func setupProgessRingWithAnimation(duration: Int, completePercentage: Double) {
-        circleShape.removeAllAnimations()
-        drawProgressRing(completePercentage: self.completePercentage)
+        progressShape.removeAllAnimations()
+        drawProgressRing(shapeLayer: backgroundShape, completePercentage: 1, strokeColor: UIColor.systemFill.cgColor)
+        drawProgressRing(shapeLayer: progressShape, completePercentage: self.completePercentage, strokeColor: UIColor.cyan.cgColor)
         self.completePercentage = completePercentage
-        addAnimationToShape(value: completePercentage, animation: drawingAnimation(inTime: duration, with: completePercentage))
+        let drawingAnimation = drawingAnimation(shapeLayer: progressShape, inTime: duration, with: completePercentage)
+        addAnimationToShape(shapeLayer: progressShape, value: completePercentage, animation: drawingAnimation)
     }
-    private func drawProgressRing(completePercentage: Double) {
+    private func drawProgressRing(shapeLayer: CAShapeLayer, completePercentage: Double, strokeColor: CGColor) {
         //UIBezierPath
         let circlePath = UIBezierPath(arcCenter: CGPoint(x: self.bounds.midX, y: self.bounds.midY),
                                       radius: (self.bounds.width) / 2 ,
@@ -51,31 +54,31 @@ class InfomationWithCirleEdgeView: UIView {
                                       endAngle: CGFloat(1.5 * .pi),
                                       clockwise: true)
         // circle shape
-        circleShape.path = circlePath.cgPath
-        circleShape.strokeColor = UIColor.cyan.cgColor
-        circleShape.fillColor = UIColor.clear.cgColor
-        circleShape.lineWidth = 8
+        shapeLayer.path = circlePath.cgPath
+        shapeLayer.strokeColor = strokeColor
+        shapeLayer.fillColor = UIColor.clear.cgColor
+        shapeLayer.lineWidth = 8
         // set start and end values
-        circleShape.strokeStart = 0.0
-        circleShape.strokeEnd = completePercentage
-      
+        shapeLayer.strokeStart = 0.0
+        shapeLayer.strokeEnd = completePercentage
         // add sublayer
-        self.layer.addSublayer(circleShape)
+        self.layer.addSublayer(shapeLayer)
     }
-    private func drawingAnimation(inTime time: Int, with value: Double ) -> CAAnimation {
+    private func drawingAnimation(shapeLayer: CAShapeLayer, inTime time: Int, with value: Double ) -> CAAnimation {
         let animation = CABasicAnimation(keyPath: "strokeEnd")
-        animation.fromValue = self.circleShape.strokeEnd
+        animation.fromValue = shapeLayer.strokeEnd
         animation.toValue = value
         animation.duration = CFTimeInterval(time)
         return animation
     }
-    private func addAnimationToShape(value: Double, animation: CAAnimation) {
-        self.circleShape.add(animation, forKey: "animation")
-        self.circleShape.strokeEnd = CGFloat(value)
+    private func addAnimationToShape(shapeLayer: CAShapeLayer, value: Double, animation: CAAnimation) {
+        shapeLayer.add(animation, forKey: "animation")
+        shapeLayer.strokeEnd = CGFloat(value)
     }
 }
 class OneDateStepDetailCell: UICollectionViewCell {
-    @IBOutlet private weak var infomationCirleEdgeView: InfomationWithCirleEdgeView!
+    @IBOutlet private weak var infomationCirleEdgeView: UIView!
+    @IBOutlet private weak var inforEdgeView: InfomationWithCirleEdgeView!
     @IBOutlet private weak var humanImage: UIImageView!
     @IBOutlet private weak var sumStep: SumStepCustomLabel!
     @IBOutlet private weak var timeline: UILabel!
@@ -109,13 +112,14 @@ class OneDateStepDetailCell: UICollectionViewCell {
     private func loadAnimationForTodayCell(data: PedometerDetail, indexNeedReload: IndexPath, lastIndex: Int) {
         guard let numberOfStep = data.steps?.currencyConvertToNumber(), let completePercentage = data.completePercentage else { return }
         let limit = NSDecimalNumber(decimal: numberOfStep).doubleValue
+        sumStep.indexNeedReload = indexNeedReload
         if isToday(indexNeedReload: indexNeedReload, lastIndex: lastIndex) {
             sumStep.displayLinkSetupWith(counterStep: 0, maxStep: limit)
             // drawing progess ring
-            self.infomationCirleEdgeView.setupProgessRingWithAnimation(duration: 2, completePercentage: completePercentage)
+            self.inforEdgeView.setupProgessRingWithAnimation(duration: 2, completePercentage: completePercentage)
         } else {
             sumStep.text = limit.toString()
-            self.infomationCirleEdgeView.setupProgessRingWithAnimation(duration: 0, completePercentage: completePercentage)
+            self.inforEdgeView.setupProgessRingWithAnimation(duration: 0, completePercentage: completePercentage)
         }
     }
     private func isToday(indexNeedReload: IndexPath, lastIndex: Int) -> Bool {
@@ -133,7 +137,6 @@ class OneDateStepDetailCell: UICollectionViewCell {
         let labelGroup = [self.time, self.mile, self.caloBurned]
         formatBottomInfoText(labels: labelGroup)
     }
-
     private func formatBottomInfoText(labels: [UILabel?]) {
         for label in labels {
             guard let label = label, let text = label.text else { return }

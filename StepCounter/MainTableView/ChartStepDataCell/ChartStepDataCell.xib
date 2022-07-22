@@ -29,7 +29,7 @@
                             <segment title="Second"/>
                         </segments>
                         <connections>
-                            <action selector="changeValueSegment:" destination="KGk-i7-Jjw" eventType="valueChanged" id="EkF-hB-N14"/>
+                            <action selector="changeValueSegment:" destination="KGk-i7-Jjw" eventType="valueChanged" id="RE8-GW-csJ"/>
                         </connections>
                     </segmentedControl>
                 </subviews>

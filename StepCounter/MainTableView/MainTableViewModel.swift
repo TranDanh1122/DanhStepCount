@@ -85,7 +85,7 @@ class MainTableViewModel {
                 guard let pedometerData = pedometerData else { return }
                 self.saveToDB(pedometerData: pedometerData)
                 let datasInDB = RealmManager.shared.getAllPedometerDetail()
-                if self.fistUseSaveDataFinished(dataSaved: datasInDB){
+                if self.fistUseSaveDataFinished(dataSaved: datasInDB) {
                     self.setupDataSource()
                 }
             }
@@ -114,7 +114,8 @@ class MainTableViewModel {
     }
     
     private func appendHistoryData() {
-        let result = RealmManager.shared.getAllPedometerDetail()
+        let daysInHistory = getSixDayInHistory()
+        let result = RealmManager.shared.filterWherein(dateArr: daysInHistory)
         self.stepDataSource = result
     }
     
@@ -131,9 +132,14 @@ class MainTableViewModel {
     // MARK: HANLE IF TODAY DATA CHANGE
     
     private func updateTodayStep() {
-        let handle: CMPedometerHandler = { [unowned self] pedometerData, error in
-            let newTodayData = PedometerDetail().setDetail(from: pedometerData)
-            updateLastItemOfDataSource(newTodayData: newTodayData) // item cuối cùng của datasource là của ngày hôm nay
+        let handle: CMPedometerHandler = { [unowned self] _, _ in
+            // không biết tại sao run time của hàm start update bị sai nên buộc p gọi hàm queryPedometer mỗi khi có update -> cần chỉnh sửa
+            PedometerSensor.pedometerStaticObject.getStep(from: Date().startOfThisDate, to: Date(), with: { [unowned self] pedometerData, error in
+                if error == nil {
+                    let newTodayData = PedometerDetail().setDetail(from: pedometerData)
+                    updateLastItemOfDataSource(newTodayData: newTodayData) // item cuối cùng của datasource là của ngày hôm nay
+                }
+            })
         }
         PedometerSensor.pedometerStaticObject.startUpdate(from: Date().startOfThisDate, with: handle)
     }
