@@ -8,29 +8,45 @@
 import Foundation
 import CoreMotion
 class MainTableViewModel {
-    let notificationCenter = NotificationCenter.default
-    let notificationName = Notification.Name.init(rawValue: "pushdata")
-    let notificationDataKey: String = "stepdetail"
-    var stepDataSource: [PedometerDetail]? = [PedometerDetail]() {
-        didSet {
-            guard let stepDataSource = stepDataSource else { return }
-            notifyDataChange(dataSource: stepDataSource)
-        }
-    }
+    
+    let model = ModelPedometer()
+    let pedometerManager = PedometerManager()
+    
+//    let notificationCenter = NotificationCenter.default
+//    let notificationName = Notification.Name.init(rawValue: "pushdata")
+//    let notificationDataKey: String = "stepdetail"
+    var stepDataSource: [PedometerDetail]? = [PedometerDetail]()
+//    {
+//        didSet {
+//            guard let stepDataSource = stepDataSource else { return }
+//            notifyDataChange(dataSource: stepDataSource)
+//        }
+//    }
     
     init() {
+        
+    }
+    
+    func setup(){
         setupStepCounterLogic()
         setupDataSource()
         updateTodayStep()
+        
+        pedometerManager.startup = updateblock()
+        
+    
     }
     
     // MARK: LOGIC PART
     
+    // 1. tạo mảng 6 ngày trước kể từ hôm nay
+    // 2. query data từ db
     func setupStepCounterLogic() {
-        //tạo mảng 6 ngày trước kể từ hôm nay
+        
+        // 1
         let sixDatesBefore = getSixDayInHistory()
-        // query data từ db
-        let listOfPedometerData = RealmManager.shared.filterWherein(dateArr: sixDatesBefore)
+        // 2
+        let listOfPedometerData = model.filterWherein(dateArr: sixDatesBefore)
         guard let listOfPedometerData = listOfPedometerData else { return }
         if isFirstUse(historyData: listOfPedometerData) {
             saveFirstUseData(sixDatesBefore: sixDatesBefore)
@@ -95,7 +111,7 @@ class MainTableViewModel {
     
     private func saveToDB(pedometerData: CMPedometerData) {
         let newPedometerRecord = PedometerDetail().setDetail(from: pedometerData)
-        RealmManager.shared.saveNewRecord(newRecord: newPedometerRecord)
+        model.saveNewRecord(newRecord: newPedometerRecord)
     }
     
     private func fistUseSaveDataFinished(dataSaved: [PedometerDetail]) -> Bool {
@@ -125,6 +141,7 @@ class MainTableViewModel {
         let handle: CMPedometerHandler = {pedometerData, error in
             let todayUpdateScreen = PedometerDetail().setDetail(from: pedometerData)
             self.stepDataSource?.append(todayUpdateScreen)
+            updateBlock()
         }
         PedometerSensor.pedometerStaticObject.getStep(from: startDay, to: endDay, with: handle)
     }
@@ -134,6 +151,8 @@ class MainTableViewModel {
     private func updateTodayStep() {
         let handle: CMPedometerHandler = { [unowned self] _, _ in
             // không biết tại sao run time của hàm start update bị sai nên buộc p gọi hàm queryPedometer mỗi khi có update -> cần chỉnh sửa
+
+            
             PedometerSensor.pedometerStaticObject.getStep(from: Date().startOfThisDate, to: Date(), with: { [unowned self] pedometerData, error in
                 if error == nil {
                     let newTodayData = PedometerDetail().setDetail(from: pedometerData)
@@ -145,14 +164,15 @@ class MainTableViewModel {
     }
     
     private func updateLastItemOfDataSource(newTodayData: PedometerDetail) {
-        if let lastItem = stepDataSource?.last, let lastIndex = stepDataSource?.lastIndex(of: lastItem) {
+        if let lastItem = stepDataSource?.last,
+            let lastIndex = stepDataSource?.lastIndex(of: lastItem) {
             stepDataSource?[lastIndex] = newTodayData
         }
     }
     
     // MARK: HANLE DATA SOURCE CHANGING PART
     
-    private func notifyDataChange(dataSource: [PedometerDetail]) {
-        notificationCenter.post(name: notificationName, object: nil, userInfo: [notificationDataKey: dataSource])
-    }
+//    private func notifyDataChange(dataSource: [PedometerDetail]) {
+//        notificationCenter.post(name: notificationName, object: nil, userInfo: [notificationDataKey: dataSource])
+//    }
 }

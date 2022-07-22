@@ -66,6 +66,11 @@ class OneWeekStepDetailCell: UITableViewCell {
     deinit {
         NotificationCenter.default.removeObserver(self, name: notificationName, object: nil)
     }
+    
+    func reload(at index: Int){
+        
+    }
+    
     override func awakeFromNib() {
         super.awakeFromNib()
         setupSubview()

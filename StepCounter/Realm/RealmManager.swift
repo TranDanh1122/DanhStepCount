@@ -7,6 +7,11 @@
 
 import Foundation
 import RealmSwift
+
+class ModelPedometer{
+    
+}
+
 class RealmManager {
     static var shared = RealmManager()
     var realm: Realm? {

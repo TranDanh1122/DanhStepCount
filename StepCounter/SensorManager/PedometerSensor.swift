@@ -8,7 +8,7 @@
 import Foundation
 import CoreMotion
 class PedometerSensor {
-    static var pedometerStaticObject: PedometerSensor = PedometerSensor()
+
     private var sensor: CMPedometer = CMPedometer()
     final func startUpdate(from startDate: Date, with handle: @escaping CMPedometerHandler) {
         if isStepCountingAvailable() {
